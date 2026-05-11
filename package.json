@@ -1,0 +1,74 @@
+{
+  "name": "@vybenetwork/x402-client",
+  "version": "0.1.0",
+  "description": "Client SDK for the Vybe x402 Gateway. Pay-per-call HTTP and prepaid-credit WebSocket access to Vybe's Solana analytics API over the x402 payment protocol.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.browser.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "x402",
+    "vybe",
+    "vybenetwork",
+    "solana",
+    "usdc",
+    "stablecoin",
+    "micropayments",
+    "pay-per-call",
+    "agents",
+    "ai",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Vybe Network",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vybenetwork/x402-client.git"
+  },
+  "homepage": "https://github.com/vybenetwork/x402-client#readme",
+  "bugs": {
+    "url": "https://github.com/vybenetwork/x402-client/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@solana/kit": "^5.1.0",
+    "@x402/core": "^2.7.0",
+    "@x402/fetch": "^2.7.0",
+    "@x402/svm": "^2.7.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.2"
+  }
+}

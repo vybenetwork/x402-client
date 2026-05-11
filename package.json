@@ -1,7 +1,7 @@
 {
   "name": "@vybenetwork/x402-client",
-  "version": "0.1.0",
-  "description": "Client SDK for the Vybe x402 Gateway. Pay-per-call HTTP and prepaid-credit WebSocket access to Vybe's Solana analytics API over the x402 payment protocol.",
+  "version": "0.1.1",
+  "description": "Client SDK for the Vybe x402 API. Pay-per-call USDC over HTTP and prepaid-credit WebSocket streaming for Vybe's Solana analytics API. Built for AI agents on Solana mainnet.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

@@ -1,5 +1,8 @@
 # @vybenetwork/x402-client
 
+[![npm](https://img.shields.io/npm/v/@vybenetwork/x402-client.svg)](https://www.npmjs.com/package/@vybenetwork/x402-client)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Client SDK for [Vybe's Solana analytics API](https://docs.vybenetwork.com/). Pay per call in USDC via the [x402 protocol](https://x402.org) — no API keys, no subscriptions, just bring a Solana wallet.
 
 > ### Beta status

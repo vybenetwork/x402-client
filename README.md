@@ -317,6 +317,16 @@ To sign: build a USDC SPL token transfer matching `accepts[0]`, sign it with you
 
 The [x402 reference implementations](https://github.com/coinbase/x402#sdks) cover Solana signing in TypeScript, Go, Python, and Rust — picking up the SDK becomes a 10-line wrapper around `@x402/core` + `@x402/svm`. There's no protocol secret sauce in this SDK.
 
+### CLI / MCP alternative
+
+If you don't want any dependency at all, [x402-proxy](https://github.com/cascade-protocol/x402-proxy) is a third-party `curl`-style CLI and MCP proxy that auto-pays any x402 endpoint, including Vybe:
+
+```bash
+npx x402-proxy https://x402-api.vybenetwork.xyz/v4/tokens/<mintAddress>
+```
+
+It derives keys from a mnemonic, signs the USDC transfer, retries with the payment header, and streams the response. Also runs as an MCP server, so AI hosts like Claude Desktop, Cursor, or Windsurf can call Vybe over stdio MCP without this SDK. Equally valid path — pick whichever fits the deployment.
+
 ### WebSocket: prepaid sessions
 
 Streaming uses one x402 payment to mint a prepaid session, then connects to `/live` with a JWT.

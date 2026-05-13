@@ -139,3 +139,4 @@ client.budgetState();
 - Vybe API reference: https://docs.vybenetwork.com/reference
 - Vybe MCP: https://docs.vybenetwork.com/docs/mcp
 - Helius (RPC): https://www.helius.dev/ — agent signup: https://dashboard.helius.dev/agents.md
+- [x402-proxy](https://github.com/cascade-protocol/x402-proxy) — third-party CLI + MCP proxy that auto-pays x402 endpoints. Alternative path for agents that prefer stdio MCP over a TS SDK.

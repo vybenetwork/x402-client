@@ -5,8 +5,13 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { VybeClient, loadKeypair, BudgetExceededError, ApiError } from "../src/index.js";
-import { _resetReady } from "../src/http.js";
+import {
+  VybeClient,
+  loadKeypair,
+  BudgetExceededError,
+  ApiError,
+} from "../src/index.js";
+import { _resetReady, buildTrustPolicy } from "../src/http.js";
 import { generateTestKeypairBase64 } from "../src/internal/test-keypair.js";
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse) => void;
@@ -19,7 +24,12 @@ function setRoute(path: string, handler: Handler) {
   routes.set(path, handler);
 }
 
-function jsonOK(res: http.ServerResponse, status: number, body: unknown, headers?: Record<string, string>) {
+function jsonOK(
+  res: http.ServerResponse,
+  status: number,
+  body: unknown,
+  headers?: Record<string, string>,
+) {
   res.writeHead(status, { "Content-Type": "application/json", ...headers });
   res.end(JSON.stringify(body));
 }
@@ -33,12 +43,12 @@ beforeAll(async () => {
     res.writeHead(404);
     res.end();
   });
-  await new Promise<void>(resolve => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, resolve));
   port = (server.address() as AddressInfo).port;
 });
 
 afterAll(async () => {
-  await new Promise<void>(resolve => server.close(() => resolve()));
+  await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
 beforeEach(() => {
@@ -60,7 +70,9 @@ function mountDiscovery() {
   });
 }
 
-async function makeClient(opts?: { budget?: { maxUsd: number; onExceed?: "reject" | "warn" } }) {
+async function makeClient(opts?: {
+  budget?: { maxUsd: number; onExceed?: "reject" | "warn" };
+}) {
   const wallet = await loadKeypair(testKeypair);
   _resetReady(wallet);
   return new VybeClient({
@@ -78,7 +90,9 @@ describe("VybeClient.get — happy path", () => {
     });
 
     const client = await makeClient();
-    const data = await client.get<{ name: string; symbol: string }>("/v4/tokens/X");
+    const data = await client.get<{ name: string; symbol: string }>(
+      "/v4/tokens/X",
+    );
     expect(data.symbol).toBe("TEST");
   });
 
@@ -92,7 +106,9 @@ describe("VybeClient.get — happy path", () => {
       settlement: "async",
     };
     setRoute("/v4/tokens/X", (_req, res) => {
-      const header = Buffer.from(JSON.stringify(receiptPayload)).toString("base64");
+      const header = Buffer.from(JSON.stringify(receiptPayload)).toString(
+        "base64",
+      );
       jsonOK(res, 200, { ok: true }, { "payment-response": header });
     });
 
@@ -171,15 +187,42 @@ describe("VybeClient.get — URL handling", () => {
     setRoute("/v4/tokens/X", (_req, res) => jsonOK(res, 200, { ok: true }));
 
     const client = await makeClient();
-    const data = await client.get<{ ok: boolean }>(`http://localhost:${port}/v4/tokens/X`);
+    const data = await client.get<{ ok: boolean }>(
+      `http://localhost:${port}/v4/tokens/X`,
+    );
     expect(data.ok).toBe(true);
   });
 
   it("rejects cross-origin absolute URLs", async () => {
     mountDiscovery();
     const client = await makeClient();
-    await expect(client.get("https://evil.example/v4/tokens/X"))
-      .rejects.toThrow(/does not match the configured apiUrl origin/);
+    await expect(
+      client.get("https://evil.example/v4/tokens/X"),
+    ).rejects.toThrow(/does not match the configured apiUrl origin/);
+  });
+});
+
+describe("HTTP trust policy", () => {
+  it("rejects negative 402 challenge amounts before signing", () => {
+    const policy = buildTrustPolicy(
+      {
+        network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        payTo: "CicjSgQ9rVUSihnS4hNFYCL8gy3fXDM243ofdZYMrdpr",
+        defaultPriceUsd: 0.001,
+        pricing: [],
+      },
+      0.01,
+    );
+
+    expect(() =>
+      policy(1, [
+        {
+          network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          payTo: "CicjSgQ9rVUSihnS4hNFYCL8gy3fXDM243ofdZYMrdpr",
+          amount: "-1",
+        },
+      ]),
+    ).toThrow(/must be non-negative/);
   });
 });
 
@@ -192,8 +235,12 @@ describe("VybeClient.get — budget", () => {
       jsonOK(res, 200, { ok: true });
     });
 
-    const client = await makeClient({ budget: { maxUsd: 0.001, onExceed: "reject" } });
-    await expect(client.get("/v4/tokens/X/top-holders")).rejects.toBeInstanceOf(BudgetExceededError);
+    const client = await makeClient({
+      budget: { maxUsd: 0.001, onExceed: "reject" },
+    });
+    await expect(client.get("/v4/tokens/X/top-holders")).rejects.toBeInstanceOf(
+      BudgetExceededError,
+    );
     expect(apiHits).toBe(0);
   });
 
@@ -210,7 +257,9 @@ describe("VybeClient.get — budget", () => {
       settlement: "async",
     };
     setRoute("/v4/tokens/X", (_req, res) => {
-      const header = Buffer.from(JSON.stringify(receiptPayload)).toString("base64");
+      const header = Buffer.from(JSON.stringify(receiptPayload)).toString(
+        "base64",
+      );
       jsonOK(res, 200, { ok: true }, { "payment-response": header });
     });
 
@@ -231,7 +280,9 @@ describe("VybeClient.get — budget", () => {
 
   it("does NOT commit spend on 5xx (refunded)", async () => {
     mountDiscovery();
-    setRoute("/v4/tokens/X", (_req, res) => jsonOK(res, 502, { error: "boom" }));
+    setRoute("/v4/tokens/X", (_req, res) =>
+      jsonOK(res, 502, { error: "boom" }),
+    );
 
     const client = await makeClient({ budget: { maxUsd: 0.005 } });
     await expect(client.get("/v4/tokens/X")).rejects.toThrow();
@@ -258,7 +309,9 @@ describe("BudgetTracker — input validation", () => {
   it("rejects NaN at commit()", async () => {
     mountDiscovery();
     const client = await makeClient({ budget: { maxUsd: 0.005 } });
-    expect(() => client.budget!.commit(0.001, NaN)).toThrow(/finite non-negative/);
+    expect(() => client.budget!.commit(0.001, NaN)).toThrow(
+      /finite non-negative/,
+    );
   });
 
   it("concurrent paidRequest calls do not exceed cap (the race the old check() admitted)", async () => {
@@ -283,9 +336,9 @@ describe("BudgetTracker — input validation", () => {
     const results = await Promise.allSettled(
       Array.from({ length: 5 }, () => client.get("/v4/tokens/X")),
     );
-    const successes = results.filter(r => r.status === "fulfilled").length;
+    const successes = results.filter((r) => r.status === "fulfilled").length;
     const budgetRejects = results.filter(
-      r => r.status === "rejected" && r.reason instanceof BudgetExceededError,
+      (r) => r.status === "rejected" && r.reason instanceof BudgetExceededError,
     ).length;
 
     expect(successes).toBe(3);
@@ -319,8 +372,8 @@ describe("BudgetTracker — input validation", () => {
     mountDiscovery();
     const client = await makeClient({ budget: { maxUsd: 0.005 } });
     client.budget!.reserve(0.001);
-    client.budget!.refund(0.001);   // back to 0
-    client.budget!.refund(0.001);   // would go to -0.001 without clamp
+    client.budget!.refund(0.001); // back to 0
+    client.budget!.refund(0.001); // would go to -0.001 without clamp
     expect(client.budgetState()?.spentUsd).toBe(0);
   });
 });
@@ -348,7 +401,9 @@ describe("API discovery validation", () => {
       });
     });
     const client = await makeClient();
-    await expect(client.get("/v4/tokens/X")).rejects.toThrow(/pricing\[0\]\.price/);
+    await expect(client.get("/v4/tokens/X")).rejects.toThrow(
+      /pricing\[0\]\.price/,
+    );
   });
 
   it("rejects USD strings with trailing junk (strict parser)", async () => {
@@ -361,7 +416,9 @@ describe("API discovery validation", () => {
       });
     });
     const client = await makeClient();
-    await expect(client.get("/v4/tokens/X")).rejects.toThrow(/did not parse as USD/);
+    await expect(client.get("/v4/tokens/X")).rejects.toThrow(
+      /did not parse as USD/,
+    );
   });
 
   it("rejects whitespace-padded USD that contains non-numeric tail", async () => {
@@ -374,7 +431,9 @@ describe("API discovery validation", () => {
       });
     });
     const client = await makeClient();
-    await expect(client.get("/v4/tokens/X")).rejects.toThrow(/did not parse as USD/);
+    await expect(client.get("/v4/tokens/X")).rejects.toThrow(
+      /did not parse as USD/,
+    );
   });
 
   it("handles trailing-slash apiUrl without producing a // discovery path", async () => {
@@ -408,7 +467,9 @@ describe("HTTP body parsing", () => {
       res.end("{ not valid json");
     });
     const client = await makeClient();
-    await expect(client.get("/v4/tokens/X")).rejects.toThrow(/body was not valid JSON/);
+    await expect(client.get("/v4/tokens/X")).rejects.toThrow(
+      /body was not valid JSON/,
+    );
   });
 
   it("includes raw text in ApiError when error response body is not valid JSON", async () => {
@@ -440,7 +501,7 @@ describe("HTTP cache — wallet+apiUrl key", () => {
       res.writeHead(404);
       res.end();
     });
-    await new Promise<void>(resolve => alt.listen(0, resolve));
+    await new Promise<void>((resolve) => alt.listen(0, resolve));
     const altPort = (alt.address() as AddressInfo).port;
     altRoutes.set("/", (_req, res) => {
       jsonOK(res, 200, {
@@ -461,13 +522,17 @@ describe("HTTP cache — wallet+apiUrl key", () => {
     // Default discovery: $0.001
     expect(a.budgetState()).toBeNull(); // no budget set, but cache populated
 
-    const b = new VybeClient({ wallet, apiUrl: `http://localhost:${altPort}`, budget: { maxUsd: 0.5 } });
+    const b = new VybeClient({
+      wallet,
+      apiUrl: `http://localhost:${altPort}`,
+      budget: { maxUsd: 0.5 },
+    });
     altRoutes.set("/v4/x", (_req, res) => jsonOK(res, 200, { ok: true }));
     // alt discovery has defaultPrice $0.999 — if cache leaked from a, b would
     // see $0.001 and the call would succeed. With a proper (wallet, apiUrl)
     // cache key, b sees $0.999 and the budget cap of $0.5 rejects.
     await expect(b.get("/v4/x")).rejects.toBeInstanceOf(BudgetExceededError);
 
-    await new Promise<void>(resolve => alt.close(() => resolve()));
+    await new Promise<void>((resolve) => alt.close(() => resolve()));
   });
 });

@@ -75,7 +75,10 @@ async function ensureReady(ctx: HttpClientCtx): Promise<Ready> {
   const info = await discoverApi(ctx.apiUrl);
   const signer = getSigner(ctx.wallet);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const scheme = new ExactSvmScheme(signer as any, ctx.rpcUrl ? { rpcUrl: ctx.rpcUrl } : undefined);
+  const scheme = new ExactSvmScheme(
+    signer as any,
+    ctx.rpcUrl ? { rpcUrl: ctx.rpcUrl } : undefined,
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const x402 = new x402Client().register(info.network as any, scheme);
 
@@ -115,9 +118,14 @@ export function _resetReady(wallet: Wallet): void {
  * Exported under `_` prefix for tests; not part of the public API.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildTrustPolicy(info: ApiInfo, maxUsdPerCall: number): (version: number, reqs: any[]) => any[] {
+export function buildTrustPolicy(
+  info: ApiInfo,
+  maxUsdPerCall: number,
+): (version: number, reqs: any[]) => any[] {
   if (!(maxUsdPerCall > 0) || !Number.isFinite(maxUsdPerCall)) {
-    throw new TypeError(`buildTrustPolicy: maxUsdPerCall must be a positive finite number, got ${maxUsdPerCall}`);
+    throw new TypeError(
+      `buildTrustPolicy: maxUsdPerCall must be a positive finite number, got ${maxUsdPerCall}`,
+    );
   }
   const maxAtomic = BigInt(Math.floor(maxUsdPerCall * USDC_ATOMIC_PER_USD));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,6 +150,12 @@ export function buildTrustPolicy(info: ApiInfo, maxUsdPerCall: number): (version
         throw new UntrustedPaymentError(
           "amount_exceeds_per_call_cap",
           `402 challenge amount is not a valid integer: ${JSON.stringify(r.amount)}`,
+        );
+      }
+      if (atomic < 0n) {
+        throw new UntrustedPaymentError(
+          "amount_exceeds_per_call_cap",
+          `402 challenge amount must be non-negative: ${JSON.stringify(r.amount)}`,
         );
       }
       if (atomic > maxAtomic) {
@@ -213,16 +227,22 @@ function resolveUrl(path: string, apiUrl: string): string {
     try {
       parsed = new URL(path);
     } catch {
-      throw new TypeError(`paidRequest: invalid absolute URL: ${JSON.stringify(path)}`);
+      throw new TypeError(
+        `paidRequest: invalid absolute URL: ${JSON.stringify(path)}`,
+      );
     }
     const base = new URL(apiUrl);
     if (parsed.origin !== base.origin) {
-      throw new TypeError(`paidRequest: absolute URL origin ${JSON.stringify(parsed.origin)} does not match the configured apiUrl origin ${JSON.stringify(base.origin)}`);
+      throw new TypeError(
+        `paidRequest: absolute URL origin ${JSON.stringify(parsed.origin)} does not match the configured apiUrl origin ${JSON.stringify(base.origin)}`,
+      );
     }
     return parsed.toString();
   }
   if (!path.startsWith("/")) {
-    throw new TypeError(`paidRequest: path must start with "/" or be an absolute http(s) URL on the configured origin, got: ${JSON.stringify(path)}`);
+    throw new TypeError(
+      `paidRequest: path must start with "/" or be an absolute http(s) URL on the configured origin, got: ${JSON.stringify(path)}`,
+    );
   }
   return new URL(path, apiUrl).toString();
 }
@@ -280,7 +300,10 @@ export async function paidRequest<T = unknown>(
     if (err instanceof Error) {
       const m = UNTRUSTED_PAYMENT_TAG_RE.exec(err.message);
       if (m) {
-        const reason = m[1] as "payTo_mismatch" | "network_mismatch" | "amount_exceeds_per_call_cap";
+        const reason = m[1] as
+          | "payTo_mismatch"
+          | "network_mismatch"
+          | "amount_exceeds_per_call_cap";
         const detail = m[2] ?? "";
         throw new UntrustedPaymentError(reason, detail);
       }
@@ -293,14 +316,19 @@ export async function paidRequest<T = unknown>(
   // instead of the cached prediction. Discovery is cached for the life
   // of the process, so a price change mid-session would otherwise let
   // budgetState() drift from real spend.
-  const billed = typeof receipt?.amount === "number" && Number.isFinite(receipt.amount)
-    ? receipt.amount
-    : expected;
+  const billed =
+    typeof receipt?.amount === "number" && Number.isFinite(receipt.amount)
+      ? receipt.amount
+      : expected;
 
   if (res.ok) {
     // 2xx — API charged us per pay-on-success policy.
     if (reserved !== undefined) ctx.budget?.commit(reserved, billed);
-    return { data: (await readResponseBody(res)) as T, receipt, status: res.status };
+    return {
+      data: (await readResponseBody(res)) as T,
+      receipt,
+      status: res.status,
+    };
   }
 
   // Body-read on the error path. If the response stream errors out
@@ -316,17 +344,28 @@ export async function paidRequest<T = unknown>(
       if (res.status >= 500) ctx.budget?.refund(reserved);
       else ctx.budget?.commit(reserved, billed);
     }
-    throw new NetworkError(`failed to read response body for status ${res.status}`, err);
+    throw new NetworkError(
+      `failed to read response body for status ${res.status}`,
+      err,
+    );
   }
 
   if (res.status === 402) {
     // Verification failed — no on-chain charge, refund the reservation.
     if (reserved !== undefined) ctx.budget?.refund(reserved);
     const reason =
-      (body && typeof body === "object" && "reason" in body && typeof (body as Record<string, unknown>).reason === "string")
-        ? (body as Record<string, unknown>).reason as string
+      body &&
+      typeof body === "object" &&
+      "reason" in body &&
+      typeof (body as Record<string, unknown>).reason === "string"
+        ? ((body as Record<string, unknown>).reason as string)
         : "payment verification failed";
-    throw new PaymentRequiredError(reason, expected, ready.info.payTo, ready.info.network);
+    throw new PaymentRequiredError(
+      reason,
+      expected,
+      ready.info.payTo,
+      ready.info.network,
+    );
   }
 
   // 4xx (not 402): API charged us per pay-on-success (user-error responses

@@ -24,6 +24,7 @@ import type { BudgetTracker } from "./budget.js";
 // need to look it up instead of hardcoding.
 const USDC_DECIMALS = 6;
 const USDC_ATOMIC_PER_USD = 10 ** USDC_DECIMALS;
+const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 export interface HttpClientCtx {
   wallet: Wallet;
@@ -133,6 +134,12 @@ export function buildTrustPolicy(info: ApiInfo, maxUsdPerCall: number): (version
         throw new UntrustedPaymentError(
           "network_mismatch",
           `402 challenge demanded payment on network ${r.network} but discovery pinned ${info.network}`,
+        );
+      }
+      if (r.asset !== SOLANA_USDC_MINT) {
+        throw new UntrustedPaymentError(
+          "asset_mismatch",
+          `402 challenge demanded asset ${r.asset} but the SDK only supports Solana USDC ${SOLANA_USDC_MINT}`,
         );
       }
       let atomic: bigint;
@@ -280,7 +287,7 @@ export async function paidRequest<T = unknown>(
     if (err instanceof Error) {
       const m = UNTRUSTED_PAYMENT_TAG_RE.exec(err.message);
       if (m) {
-        const reason = m[1] as "payTo_mismatch" | "network_mismatch" | "amount_exceeds_per_call_cap";
+        const reason = m[1] as "payTo_mismatch" | "network_mismatch" | "asset_mismatch" | "amount_exceeds_per_call_cap";
         const detail = m[2] ?? "";
         throw new UntrustedPaymentError(reason, detail);
       }

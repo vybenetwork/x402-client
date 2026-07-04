@@ -72,7 +72,8 @@ export class InsufficientCreditsError extends VybeError {
  * The SDK refused to sign a payment because the 402 challenge from the
  * API didn't match the SDK's trust assumptions: the payee differs
  * from the discovered `payTo`, the network differs from the discovered
- * network, or the demanded amount exceeds the configured per-call cap.
+ * network, the SVM token mint is not Solana USDC, or the demanded
+ * amount exceeds the configured per-call cap.
  *
  * This is a *defensive* error — it fires before any signature, so no
  * funds are at risk. It typically indicates one of: (a) the API
@@ -87,6 +88,7 @@ export class InsufficientCreditsError extends VybeError {
 export type UntrustedPaymentReason =
   | "payTo_mismatch"
   | "network_mismatch"
+  | "asset_mismatch"
   | "amount_exceeds_per_call_cap";
 
 /**
@@ -97,7 +99,7 @@ export type UntrustedPaymentReason =
  *
  * Internal — kept in lockstep with the regex on the consumer side.
  */
-export const UNTRUSTED_PAYMENT_TAG_RE = /\[VYBE_TRUST:(payTo_mismatch|network_mismatch|amount_exceeds_per_call_cap)\]\s*(.*)/s;
+export const UNTRUSTED_PAYMENT_TAG_RE = /\[VYBE_TRUST:(payTo_mismatch|network_mismatch|asset_mismatch|amount_exceeds_per_call_cap)\]\s*(.*)/s;
 
 export class UntrustedPaymentError extends VybeError {
   constructor(

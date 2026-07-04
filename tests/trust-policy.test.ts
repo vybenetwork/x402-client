@@ -85,6 +85,23 @@ describe("buildTrustPolicy — rejects network mismatch", () => {
   });
 });
 
+describe("buildTrustPolicy — rejects asset mismatch", () => {
+  it("throws when the challenge asks for a non-USDC asset", () => {
+    const policy = buildTrustPolicy(INFO, 0.1);
+    const wrongAsset = req({ asset: "So11111111111111111111111111111111111111112" });
+    try {
+      policy(2, [wrongAsset]);
+      throw new Error("policy should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(UntrustedPaymentError);
+      const err = e as UntrustedPaymentError;
+      expect(err.reason).toBe("asset_mismatch");
+      expect(err.message).toContain("[VYBE_TRUST:asset_mismatch]");
+      expect(err.message).toContain("So11111111111111111111111111111111111111112");
+    }
+  });
+});
+
 describe("buildTrustPolicy — rejects amount over per-call cap", () => {
   it("throws when amount in USD exceeds maxUsdPerCall", () => {
     // cap = $0.01 = 10000 atomic; demand 0.02 USDC = 20000 atomic
